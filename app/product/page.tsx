@@ -43,7 +43,10 @@ export default function ProductPage() {
       cart = JSON.parse(existingCart);
     }
 
-    cart.push(product);
+    cart.push({
+      ...product,
+      quantity: 1,
+    });
 
     localStorage.setItem(
       "cart",
@@ -54,7 +57,7 @@ export default function ProductPage() {
   };
 
   return (
-    <main className="min-h-screen px-8 py-16">
+    <main className="min-h-screen px-4 md:px-8 py-16">
 
       {/* Heading */}
       <div className="text-center mb-16">
@@ -63,7 +66,7 @@ export default function ProductPage() {
           Handmade Collection
         </p>
 
-        <h1 className="text-5xl mt-4">
+        <h1 className="text-3xl md:text-5xl mt-4">
           商品系列
         </h1>
 
@@ -116,10 +119,6 @@ export default function ProductPage() {
 
               <p className="mt-2 text-[#7A5C4D]">
                 {product.english}
-              </p>
-
-              <p className="mt-4 text-xl font-medium">
-                {product.price}
               </p>
 
               {product.description && (
