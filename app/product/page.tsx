@@ -43,15 +43,40 @@ export default function ProductPage() {
       cart = JSON.parse(existingCart);
     }
 
-    cart.push({
-      ...product,
-      quantity: 1,
-    });
-
-    localStorage.setItem(
-      "cart",
-      JSON.stringify(cart)
+    const existingProduct = cart.find(
+      (item: any) => item.id === product.id
     );
+
+    if (existingProduct) {
+
+      const updatedCart = cart.map((item: any) =>
+
+        item.id === product.id
+          ? {
+              ...item,
+              quantity: item.quantity + 1,
+            }
+          : item
+      );
+
+      localStorage.setItem(
+        "cart",
+        JSON.stringify(updatedCart)
+      );
+    }
+
+    else {
+
+      cart.push({
+        ...product,
+        quantity: 1,
+      });
+
+      localStorage.setItem(
+        "cart",
+        JSON.stringify(cart)
+      );
+    }
 
     alert(`${product.name} 已加入购物车 🛒`);
   };
