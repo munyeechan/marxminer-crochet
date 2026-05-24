@@ -1,256 +1,663 @@
+// app/checkout/page.tsx
+
 "use client";
 
-import { useState } from "react";
-import { supabase } from "../../lib/supabase";
-import { CldUploadWidget } from "next-cloudinary";
+import { useEffect, useState } from "react";
+
+import Footer from "@/components/Footer";
+
+import { supabase } from "@/lib/supabase";
 
 export default function CheckoutPage() {
 
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [amount, setAmount] = useState("");
+  const [cart, setCart] =
+    useState<any[]>([]);
 
-  const [promoCode, setPromoCode] = useState("");
-  const [discount, setDiscount] = useState(0);
+  // Form States
+  const [name, setName] =
+    useState("");
 
-  const [paymentImage, setPaymentImage] = useState("");
+  const [phone, setPhone] =
+    useState("");
 
-  const subtotal = Number(amount || 0);
+  const [email, setEmail] =
+    useState("");
 
+  const [address, setAddress] =
+    useState("");
+
+  // QR
+  const [paynowQr, setPaynowQr] =
+    useState("");
+
+  // Screenshot Upload
+  const [paymentImage, setPaymentImage] =
+    useState<File | null>(null);
+
+  const [preview, setPreview] =
+    useState("");
+
+  // Load Cart + Settings
+  useEffect(() => {
+
+    const fetchData =
+      async () => {
+
+        // Cart
+        const storedCart =
+          localStorage.getItem("cart");
+
+        if (storedCart) {
+
+          setCart(
+            JSON.parse(storedCart)
+          );
+
+        }
+
+        // Settings
+        const { data } =
+          await supabase
+            .from("settings")
+            .select("paynow_qr")
+            .eq("id", 1)
+            .single();
+
+        if (data?.paynow_qr) {
+
+          setPaynowQr(
+            data.paynow_qr
+          );
+
+        }
+
+      };
+
+    fetchData();
+
+  }, []);
+
+  // Subtotal
+  const subtotal =
+    cart.reduce(
+
+      (sum, item) =>
+
+        sum +
+        (
+          Number(item.price) *
+          item.quantity
+        ),
+
+      0
+
+    );
+
+  // Shipping Fee
+  const deliveryFee =
+    subtotal >= 80 ? 0 : 20;
+
+  // Final Total
   const finalTotal =
-    subtotal - subtotal * discount;
+    subtotal + deliveryFee;
 
-  const applyPromo = () => {
+  // Upload Screenshot
+  const handleImageUpload = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
 
-    if (promoCode === "WELCOME10") {
+    const file =
+      e.target.files?.[0];
 
-      setDiscount(0.1);
+    if (!file) return;
 
-      alert("10% OFF 已使用 ✨");
-    }
+    setPaymentImage(file);
 
-    else if (promoCode === "MARX20") {
+    setPreview(
+      URL.createObjectURL(file)
+    );
 
-      setDiscount(0.2);
-
-      alert("20% OFF 已使用 ✨");
-    }
-
-    else {
-
-      alert("优惠码无效");
-    }
   };
 
-  const handleCheckout = async () => {
+  // Submit Order
+  const handleCheckout =
+    async () => {
 
-    if (
-      !name ||
-      !phone ||
-      !amount ||
-      !paymentImage
-    ) {
+      if (!paymentImage) {
 
-      alert("请填写完整资料");
+        alert("请上传付款截图 ✨");
 
-      return;
-    }
+        return;
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+      }
 
-    const { error } = await supabase
-      .from("orders")
-      .insert([
-        {
-          customer_name: name,
-          phone,
-          amount: finalTotal,
-          payment_image: paymentImage,
-          status: "Pending",
-          user_id: user?.id,
-        },
-      ]);
+      // Get Login User
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-    if (error) {
+      if (!user) {
 
-      alert(error.message);
+        alert("请先登录");
 
-      return;
-    }
+        window.location.href =
+          "/login";
 
-    alert("订单提交成功 ✨");
+        return;
 
-    localStorage.removeItem("cart");
+      }
 
-    window.location.href = "/success";
+      // Upload Screenshot
+      const fileName =
+        `${Date.now()}-${paymentImage.name}`;
+
+      const { error: uploadError } =
+        await supabase.storage
+          .from("payments")
+          .upload(
+            fileName,
+            paymentImage
+          );
+
+      if (uploadError) {
+
+        console.log(uploadError);
+
+        alert("图片上传失败");
+
+        return;
+
+      }
+
+      // Public URL
+      const {
+        data: { publicUrl },
+      } = supabase.storage
+        .from("payments")
+        .getPublicUrl(fileName);
+
+      // Insert Order
+      const { error } =
+        await supabase
+          .from("orders")
+          .insert([
+
+            {
+
+              name,
+
+              phone,
+
+              email: user.email,
+
+              address,
+
+              items: cart,
+
+              total: finalTotal,
+
+              payment_proof:
+                publicUrl,
+
+              status: "处理中",
+
+            },
+
+          ]);
+
+      if (error) {
+
+        console.log(error);
+
+        alert(JSON.stringify(error));
+
+        return;
+
+      }
+
+      alert("订单提交成功 ✨");
+
+      localStorage.removeItem("cart");
+
+      window.location.href =
+        "/orders";
+
   };
 
   return (
-    <main className="min-h-screen px-8 py-16">
 
-      <div className="max-w-3xl mx-auto">
+    <main className="
+      min-h-screen
+      bg-[#F8F4EF]
+      px-6
+      py-16
+    ">
 
-        <h1 className="text-5xl mb-12">
-          Checkout
-        </h1>
+      <div className="
+        max-w-7xl
+        mx-auto
+      ">
 
-        <div className="bg-white rounded-[40px] p-10 shadow-sm space-y-6">
+        {/* Title */}
+        <div className="mb-16">
 
-          {/* Name */}
-          <input
-            type="text"
-            placeholder="姓名 Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full rounded-2xl p-4 bg-[#F7F1EA] outline-none"
-          />
+          <p className="
+            uppercase
+            tracking-[5px]
+            text-[#A18072]
+            text-sm
+            mb-3
+          ">
 
-          {/* Phone */}
-          <input
-            type="text"
-            placeholder="电话号码 Phone"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="w-full rounded-2xl p-4 bg-[#F7F1EA] outline-none"
-          />
+            Checkout
 
-          {/* Amount */}
-          <input
-            type="text"
-            placeholder="付款金额 Amount"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="w-full rounded-2xl p-4 bg-[#F7F1EA] outline-none"
-          />
+          </p>
 
-          {/* Promo Code */}
-          <div className="space-y-4">
+          <h1 className="
+            text-5xl
+            text-[#4B342B]
+          ">
 
-            <input
-              type="text"
-              placeholder="Promo Code"
-              value={promoCode}
-              onChange={(e) => setPromoCode(e.target.value)}
-              className="w-full rounded-2xl p-4 bg-[#F7F1EA] outline-none"
-            />
+            订单结账
 
-            <button
-              type="button"
-              onClick={applyPromo}
-              className="w-full rounded-full bg-black text-white py-4 hover:opacity-90 transition"
-            >
-              Apply Promo
-            </button>
+          </h1>
 
-          </div>
+        </div>
 
-          {/* Price Summary */}
-          <div className="bg-[#F7F1EA] rounded-[30px] p-6 space-y-4">
+        <div className="
+          grid
+          lg:grid-cols-3
+          gap-12
+        ">
 
-            <div className="flex justify-between">
+          {/* Left */}
+          <div className="
+            lg:col-span-2
+            bg-white
+            rounded-[35px]
+            p-10
+            shadow-sm
+          ">
 
-              <span>
-                Original Total
-              </span>
+            <h2 className="
+              text-3xl
+              text-[#4B342B]
+              mb-10
+            ">
 
-              <span>
-                S${subtotal}
-              </span>
+              收货资料
 
-            </div>
-
-            <div className="flex justify-between">
-
-              <span>
-                Discount
-              </span>
-
-              <span>
-                {discount * 100}%
-              </span>
-
-            </div>
-
-            <div className="border-t border-[#D9C2B0] pt-4 flex justify-between text-2xl">
-
-              <span>
-                Final Total
-              </span>
-
-              <span>
-                S${finalTotal}
-              </span>
-
-            </div>
-
-          </div>
-
-          {/* QR */}
-          <div className="bg-[#F7F1EA] rounded-[30px] p-6 text-center">
-
-            <h2 className="text-2xl mb-4">
-              请扫描 PayNow
             </h2>
 
-            <img
-              src="/paynow.jpeg"
-              alt="PayNow QR"
-              className="w-72 mx-auto rounded-[30px]"
-            />
+            <div className="
+              grid
+              md:grid-cols-2
+              gap-6
+            ">
+
+              <input
+                type="text"
+                placeholder="姓名"
+                value={name}
+                onChange={(e) =>
+                  setName(e.target.value)
+                }
+                className="
+                  bg-[#F7F1EA]
+                  rounded-2xl
+                  p-5
+                  outline-none
+                "
+              />
+
+              <input
+                type="text"
+                placeholder="电话号码"
+                value={phone}
+                onChange={(e) =>
+                  setPhone(e.target.value)
+                }
+                className="
+                  bg-[#F7F1EA]
+                  rounded-2xl
+                  p-5
+                  outline-none
+                "
+              />
+
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) =>
+                  setEmail(e.target.value)
+                }
+                className="
+                  md:col-span-2
+                  bg-[#F7F1EA]
+                  rounded-2xl
+                  p-5
+                  outline-none
+                "
+              />
+
+              <input
+                type="text"
+                placeholder="收货地址"
+                value={address}
+                onChange={(e) =>
+                  setAddress(e.target.value)
+                }
+                className="
+                  md:col-span-2
+                  bg-[#F7F1EA]
+                  rounded-2xl
+                  p-5
+                  outline-none
+                "
+              />
+
+            </div>
+
+            {/* Notice */}
+            <div className="
+              mt-16
+              bg-[#FDF8F5]
+              border
+              border-[#EFE1D8]
+              rounded-[30px]
+              p-8
+            ">
+
+              <h3 className="
+                text-2xl
+                text-[#4B342B]
+                mb-5
+              ">
+
+                注意事项
+
+              </h3>
+
+              <div className="
+                text-[#8B7267]
+                leading-9
+                text-lg
+              ">
+
+                <p>
+                  注意：产品多为预定产品，
+                  请下单前联系客服咨询。
+                </p>
+
+                <p className="mt-4">
+                  预定后 7-14 天内发货 ✨
+                </p>
+
+              </div>
+
+            </div>
 
           </div>
 
-          {/* Upload Payment */}
-          <CldUploadWidget
-            uploadPreset="unsigned_preset"
-            onSuccess={(result: any) => {
+          {/* Right */}
+          <div>
 
-              setPaymentImage(result.info.secure_url);
+            <div className="
+              bg-white
+              rounded-[35px]
+              p-10
+              shadow-sm
+              sticky
+              top-10
+            ">
 
-            }}
-          >
+              <h2 className="
+                text-3xl
+                text-[#4B342B]
+                mb-10
+              ">
 
-            {({ open }) => {
+                订单总览
 
-              return (
-                <button
-                  type="button"
-                  onClick={() => open()}
-                  className="w-full rounded-2xl bg-[#F7F1EA] py-4"
+              </h2>
+
+              {/* Products */}
+              <div className="space-y-5">
+
+                {cart.map((item) => (
+
+                  <div
+                    key={item.id}
+                    className="
+                      flex
+                      justify-between
+                      text-[#8B7267]
+                    "
+                  >
+
+                    <p>
+                      {item.name}
+                      ×
+                      {item.quantity}
+                    </p>
+
+                    <p>
+                      S$
+                      {(
+                        Number(item.price) *
+                        item.quantity
+                      ).toFixed(2)}
+                    </p>
+
+                  </div>
+
+                ))}
+
+              </div>
+
+              {/* Divider */}
+              <div className="
+                h-[1px]
+                bg-[#E7DDD5]
+                my-8
+              "></div>
+
+              {/* Subtotal */}
+              <div className="
+                flex
+                justify-between
+                text-[#8B7267]
+                mb-4
+              ">
+
+                <p>小计</p>
+
+                <p>
+                  S${subtotal.toFixed(2)}
+                </p>
+
+              </div>
+
+              {/* Shipping */}
+              <div className="
+                flex
+                justify-between
+                text-[#8B7267]
+                mb-4
+              ">
+
+                <p>运费</p>
+
+                <p>
+
+                  {deliveryFee === 0
+                    ? "免费"
+                    : `S$${deliveryFee}`}
+
+                </p>
+
+              </div>
+
+              {/* Total */}
+              <div className="
+                flex
+                justify-between
+                text-2xl
+                text-[#4B342B]
+                border-t
+                pt-6
+                mt-6
+              ">
+
+                <p>Total</p>
+
+                <p>
+                  S${finalTotal.toFixed(2)}
+                </p>
+
+              </div>
+
+              {/* PayNow */}
+              <div className="
+                mt-10
+                bg-[#FDF8F5]
+                rounded-[30px]
+                p-8
+                border
+                border-[#EFE1D8]
+              ">
+
+                <h3 className="
+                  text-2xl
+                  text-[#4B342B]
+                  mb-6
+                ">
+
+                  PayNow 付款
+
+                </h3>
+
+                <img
+                  src={
+                    paynowQr ||
+                    "/paynow.png"
+                  }
+                  alt="PayNow QR"
+                  className="
+                    w-full
+                    rounded-2xl
+                    shadow-sm
+                  "
+                />
+
+                <div className="
+                  mt-6
+                  space-y-3
+                  text-[#8B7267]
+                  leading-8
+                ">
+
+                  <p>
+                    收款名称：
+                    Marxminer Crochet
+                  </p>
+
+                  <p>
+                    PayNow：
+                    +65 8847 3621
+                  </p>
+
+                  <p>
+                    请付款后上传截图 ✨
+                  </p>
+
+                </div>
+
+              </div>
+
+              {/* Upload Screenshot */}
+              <div className="mt-8">
+
+                <label
+                  className="
+                    block
+                    mb-4
+                    text-[#4B342B]
+                    text-lg
+                  "
                 >
+
                   上传付款截图
-                </button>
-              );
-            }}
 
-          </CldUploadWidget>
+                </label>
 
-          {/* Preview */}
-          {paymentImage && (
+                <input
+                  type="file"
+                  accept="image/*,.pdf,.heic,.doc,.docx"
+                  onChange={handleImageUpload}
+                  className="
+                    w-full
+                    bg-[#F7F1EA]
+                    rounded-2xl
+                    p-4
+                    text-[#8B7267]
+                  "
+                />
 
-            <img
-              src={paymentImage}
-              alt="Payment"
-              className="rounded-[30px]"
-            />
+                {/* Preview */}
+                {preview && (
 
-          )}
+                  <img
+                    src={preview}
+                    alt="preview"
+                    className="
+                      mt-6
+                      rounded-2xl
+                      shadow-sm
+                    "
+                  />
 
-          {/* Submit */}
-          <button
-            type="button"
-            onClick={handleCheckout}
-            className="w-full rounded-full bg-[#BFA58A] text-white py-4 hover:opacity-90 transition"
-          >
-            提交订单
-          </button>
+                )}
+
+              </div>
+
+              {/* Submit */}
+              <button
+
+                type="button"
+
+                onClick={handleCheckout}
+
+                className="
+                  mt-10
+                  w-full
+                  bg-[#D8A6B6]
+                  text-white
+                  py-5
+                  rounded-full
+                  text-xl
+                  hover:opacity-90
+                  transition
+                "
+              >
+
+                提交订单
+
+              </button>
+
+            </div>
+
+          </div>
 
         </div>
 
       </div>
 
+      <Footer />
+
     </main>
+
   );
+
 }

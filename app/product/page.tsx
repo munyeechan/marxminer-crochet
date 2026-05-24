@@ -2,175 +2,180 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import Navbar from "../../components/Navbar";
+import Footer from "../../components/Footer";
+import { useSearchParams } from "next/navigation";
 
 export default function ProductPage() {
 
   const [products, setProducts] = useState<any[]>([]);
 
+  const searchParams = useSearchParams();
+
+  const category = searchParams.get("category");
+
   useEffect(() => {
 
     fetchProducts();
 
-  }, []);
+  }, [category]);
 
   const fetchProducts = async () => {
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("products")
       .select("*");
+
+    if (category) {
+
+      query = query.eq("category", category);
+
+    }
+
+    const { data, error } = await query;
 
     if (error) {
 
       console.log(error);
 
       return;
+
     }
 
-    if (data) {
+    setProducts(data || []);
 
-      setProducts(data);
-    }
-  };
-
-  const addToCart = (product: any) => {
-
-    const existingCart = localStorage.getItem("cart");
-
-    let cart = [];
-
-    if (existingCart) {
-
-      cart = JSON.parse(existingCart);
-    }
-
-    const existingProduct = cart.find(
-      (item: any) => item.id === product.id
-    );
-
-    if (existingProduct) {
-
-      const updatedCart = cart.map((item: any) =>
-
-        item.id === product.id
-          ? {
-              ...item,
-              quantity: item.quantity + 1,
-            }
-          : item
-      );
-
-      localStorage.setItem(
-        "cart",
-        JSON.stringify(updatedCart)
-      );
-    }
-
-    else {
-
-      cart.push({
-        ...product,
-        quantity: 1,
-      });
-
-      localStorage.setItem(
-        "cart",
-        JSON.stringify(cart)
-      );
-    }
-
-    alert(`${product.name} 已加入购物车 🛒`);
   };
 
   return (
-    <main className="min-h-screen px-4 md:px-8 py-16">
+
+    <main className="bg-[#F8F4EF] min-h-screen">
+
+      <Navbar />
 
       {/* Heading */}
-      <div className="text-center mb-16">
+      <section className="py-20 text-center">
 
-        <p className="uppercase tracking-[4px] text-[#BFA58A] text-sm">
-          Handmade Collection
+        <p className="uppercase tracking-[4px] text-[#C7A1A8]">
+          Crochet Collection
         </p>
 
-        <h1 className="text-3xl md:text-5xl mt-4">
-          商品系列
+        <h1 className="text-5xl mt-5 text-[#4B342B]">
+
+          {category === "bags" && "包包系列"}
+
+          {category === "plushies" && "玩偶系列"}
+
+          {category === "bouquets" && "花束系列"}
+
+          {category === "accessories" && "饰品系列"}
+
+          {!category && "所有商品"}
+
         </h1>
 
-      </div>
+      </section>
 
-      {/* Empty State */}
-      {products.length === 0 && (
+      {/* Products */}
+      <section className="pb-24">
 
-        <div className="bg-white rounded-[30px] p-10 shadow-sm text-center">
+        <div className="max-w-7xl mx-auto px-6">
 
-          <h2 className="text-3xl">
-            暂无商品
-          </h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
 
-        </div>
+            {products.map((product) => (
 
-      )}
-
-      {/* Product Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-
-        {products.map((product) => (
-
-          <div
-            key={product.id}
-            className="bg-white rounded-[30px] overflow-hidden shadow-sm hover:shadow-xl transition"
-          >
-
-            {/* Product Image */}
-            <a href={`/product/${product.id}`}>
-
-              <img
-                src={product.image}
-                alt={product.name}
-                className="h-[350px] w-full object-cover hover:scale-105 transition duration-300"
-              />
-
-            </a>
-
-            {/* Product Info */}
-            <div className="p-6">
-
-              <div className="flex justify-end text-2xl mb-4">
-                ♡
-              </div>
-
-              <h2 className="text-2xl">
-                {product.name}
-              </h2>
-
-              <p className="mt-2 text-[#7A5C4D]">
-                {product.english}
-              </p>
-
-              {product.description && (
-
-                <p className="mt-4 text-[#7A5C4D] leading-7">
-                  {product.description}
-                </p>
-
-              )}
-
-              {/* Add To Cart */}
-              <button
-                type="button"
-                onClick={() => addToCart(product)}
-                className="mt-6 w-full rounded-full bg-[#BFA58A] text-white py-4 hover:opacity-90 transition"
+              <a
+                key={product.id}
+                href={`/product/${product.id}`}
+                className="
+                  bg-white
+                  rounded-[30px]
+                  overflow-hidden
+                  shadow-sm
+                  hover:shadow-xl
+                  transition
+                  block
+                "
               >
-                加入购物车
-              </button>
 
-            </div>
+                {/* Product Image */}
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  className="
+                    h-[300px]
+                    w-full
+                    object-cover
+                  "
+                />
+
+                {/* Product Info */}
+                <div className="p-6">
+
+                  {/* Chinese Name */}
+                  <h2 className="text-2xl text-[#4B342B]">
+
+                    {product.name}
+
+                  </h2>
+
+                  {/* English Name */}
+                  <p className="mt-2 text-[#8B7267]">
+
+                    {product.english}
+
+                  </p>
+
+                  {/* Price */}
+                  <p className="
+                    mt-5
+                    text-[#4B342B]
+                    text-2xl
+                    font-medium
+                  ">
+
+                    S${product.price}
+
+                  </p>
+
+                  {/* Discount */}
+                  {product.discount > 0 && (
+
+                    <div className="mt-4">
+
+                      <span className="
+                        bg-red-100
+                        text-red-500
+                        px-4
+                        py-2
+                        rounded-full
+                        text-sm
+                      ">
+
+                        🔥 {product.discount}% OFF
+
+                      </span>
+
+                    </div>
+
+                  )}
+
+                </div>
+
+              </a>
+
+            ))}
 
           </div>
 
-        ))}
+        </div>
 
-      </div>
+      </section>
+
+      <Footer />
 
     </main>
+
   );
+
 }
