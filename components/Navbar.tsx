@@ -172,7 +172,7 @@ export default function Navbar() {
           </a>
 
           <a
-            href="/product?category=bag"
+            href="/product?category=bags"
             className="
               hover:text-[#C797A8]
               transition
@@ -182,7 +182,7 @@ export default function Navbar() {
           </a>
 
           <a
-            href="/product?category=plushie"
+            href="/product?category=plushies"
             className="
               hover:text-[#C797A8]
               transition
@@ -192,7 +192,7 @@ export default function Navbar() {
           </a>
 
           <a
-            href="/product?category=bouquet"
+            href="/product?category=bouquets"
             className="
               hover:text-[#C797A8]
               transition
