@@ -1,18 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "../../lib/supabase";
-import Navbar from "../../components/Navbar";
-import Footer from "../../components/Footer";
+import { Suspense, useEffect, useState } from "react";
+
 import { useSearchParams } from "next/navigation";
 
-export default function ProductPage() {
+import { supabase } from "../../lib/supabase";
 
-  const [products, setProducts] = useState<any[]>([]);
+import Navbar from "../../components/Navbar";
 
-  const searchParams = useSearchParams();
+import Footer from "../../components/Footer";
 
-  const category = searchParams.get("category");
+function ProductContent() {
+
+  const [products, setProducts] =
+    useState<any[]>([]);
+
+  const searchParams =
+    useSearchParams();
+
+  const category =
+    searchParams.get("category");
 
   useEffect(() => {
 
@@ -20,61 +27,82 @@ export default function ProductPage() {
 
   }, [category]);
 
-  const fetchProducts = async () => {
+  const fetchProducts =
+    async () => {
 
-    let query = supabase
-      .from("products")
-      .select("*");
+      let query = supabase
+        .from("products")
+        .select("*");
 
-    if (category) {
+      if (category) {
 
-      query = query.eq("category", category);
+        query = query.eq(
+          "category",
+          category
+        );
 
-    }
+      }
 
-    const { data, error } = await query;
+      const { data, error } =
+        await query;
 
-    if (error) {
+      if (error) {
 
-      console.log(error);
-      
-if (!products) {
-  return null;
-}
-      return;
+        console.log(error);
 
-    }
+        return;
 
-    setProducts(data || []);
+      }
+
+      setProducts(data || []);
 
   };
-if (!products) {
-  return null;
-}
+
   return (
 
-    <main className="bg-[#F8F4EF] min-h-screen">
+    <main className="
+      bg-[#F8F4EF]
+      min-h-screen
+    ">
 
       <Navbar />
 
       {/* Heading */}
-      <section className="py-20 text-center">
+      <section className="
+        py-20
+        text-center
+      ">
 
-        <p className="uppercase tracking-[4px] text-[#C7A1A8]">
+        <p className="
+          uppercase
+          tracking-[4px]
+          text-[#C7A1A8]
+        ">
+
           Crochet Collection
+
         </p>
 
-        <h1 className="text-5xl mt-5 text-[#4B342B]">
+        <h1 className="
+          text-5xl
+          mt-5
+          text-[#4B342B]
+        ">
 
-          {category === "bags" && "包包系列"}
+          {category === "bags" &&
+            "包包系列"}
 
-          {category === "plushies" && "玩偶系列"}
+          {category === "plushies" &&
+            "玩偶系列"}
 
-          {category === "bouquets" && "花束系列"}
+          {category === "bouquets" &&
+            "花束系列"}
 
-          {category === "accessories" && "饰品系列"}
+          {category === "accessories" &&
+            "饰品系列"}
 
-          {!category && "所有商品"}
+          {!category &&
+            "所有商品"}
 
         </h1>
 
@@ -83,11 +111,21 @@ if (!products) {
       {/* Products */}
       <section className="pb-24">
 
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="
+          max-w-7xl
+          mx-auto
+          px-6
+        ">
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+          <div className="
+            grid
+            grid-cols-2
+            md:grid-cols-4
+            gap-8
+          ">
 
-            {products?.map((product) => (
+            {products?.map(
+              (product) => (
 
               <a
                 key={product.id}
@@ -103,7 +141,7 @@ if (!products) {
                 "
               >
 
-                {/* Product Image */}
+                {/* Image */}
                 <img
                   src={product.image}
                   alt={product.name}
@@ -114,24 +152,27 @@ if (!products) {
                   "
                 />
 
-                {/* Product Info */}
+                {/* Info */}
                 <div className="p-6">
 
-                  {/* Chinese Name */}
-                  <h2 className="text-2xl text-[#4B342B]">
+                  <h2 className="
+                    text-2xl
+                    text-[#4B342B]
+                  ">
 
                     {product.name}
 
                   </h2>
 
-                  {/* English Name */}
-                  <p className="mt-2 text-[#8B7267]">
+                  <p className="
+                    mt-2
+                    text-[#8B7267]
+                  ">
 
                     {product.english}
 
                   </p>
 
-                  {/* Price */}
                   <p className="
                     mt-5
                     text-[#4B342B]
@@ -143,7 +184,6 @@ if (!products) {
 
                   </p>
 
-                  {/* Discount */}
                   {product.discount > 0 && (
 
                     <div className="mt-4">
@@ -157,7 +197,8 @@ if (!products) {
                         text-sm
                       ">
 
-                        🔥 {product.discount}% OFF
+                        🔥
+                        {product.discount}% OFF
 
                       </span>
 
@@ -180,6 +221,26 @@ if (!products) {
       <Footer />
 
     </main>
+
+  );
+
+}
+
+export default function ProductPage() {
+
+  return (
+
+    <Suspense
+      fallback={
+        <div>
+          Loading...
+        </div>
+      }
+    >
+
+      <ProductContent />
+
+    </Suspense>
 
   );
 
