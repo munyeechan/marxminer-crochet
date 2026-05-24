@@ -37,7 +37,10 @@ export default function ProductPage() {
     if (error) {
 
       console.log(error);
-
+      
+if (!products) {
+  return null;
+}
       return;
 
     }
@@ -45,7 +48,9 @@ export default function ProductPage() {
     setProducts(data || []);
 
   };
-
+if (!products) {
+  return null;
+}
   return (
 
     <main className="bg-[#F8F4EF] min-h-screen">
