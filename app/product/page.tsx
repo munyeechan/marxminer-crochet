@@ -82,7 +82,7 @@ export default function ProductPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
 
-            {products.map((product) => (
+            {products?.map((product) => (
 
               <a
                 key={product.id}
